@@ -16,6 +16,9 @@ export const AUDIO = {
   fadeOutS: 1.5,   // mode sounds fade out over this when a session ends
   lookaheadS: 1,   // scheduled sounds are queued this far past the next repeat
   tickMs: 1000,
+  // iOS audio session per 'On silent' option (see js/app-settings.js).
+  // playback: plays with the silent switch on, pauses other audio. ambient: mixes with it, obeys the switch.
+  sessionTypes: ['playback', 'ambient'],
 };
 
 export const CUES = {

@@ -3,9 +3,8 @@ import { AUDIO, CUES } from './config.js';
 let ctx = null;
 
 // Call from a user gesture (iOS will not start audio otherwise).
-export function unlockAudio() {
-  // iOS 17+: play through the silent switch.
-  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch {}
+export function unlockAudio({ silent }) {
+  try { if (navigator.audioSession) navigator.audioSession.type = AUDIO.sessionTypes[silent]; } catch {}
   const Ctx = window.AudioContext || window.webkitAudioContext;
   if (!ctx && Ctx) ctx = new Ctx();
   if (ctx && ctx.state !== 'running') ctx.resume();

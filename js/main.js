@@ -7,6 +7,7 @@ import { keepAwake, allowSleep } from './wakelock.js';
 import * as store from './storage.js';
 import { clamp, formatClock } from './util.js';
 import { formatSetting } from './modes/shared.js';
+import { APP } from './app-settings.js';
 
 const $ = (id) => document.getElementById(id);
 const els = {
@@ -23,6 +24,7 @@ root.setProperty('--scene-lift-ms', `${TIMING.sceneLiftMs}ms`);
 const findMode = (id) => MODES.find((m) => m.id === id);
 let mode = findMode(new URLSearchParams(location.search).get('mode')) ?? findMode(store.loadModeId()) ?? MODES[0];
 let values = store.loadSettings(mode);
+const appValues = store.loadSettings(APP);
 let session = null;
 let fadeTimer = 0;
 let hudTimer = 0;
@@ -46,7 +48,8 @@ function el(tag, className, text) {
   return node;
 }
 
-function stepper(def) {
+// onChange runs after values[def.key] changes.
+function stepper(def, values, onChange) {
   const row = el('div', 'stepper');
   const minus = el('button', null, '−');
   const out = el('output');
@@ -60,8 +63,7 @@ function stepper(def) {
   };
   const change = (dir) => {
     values[def.key] = clamp(values[def.key] + dir * def.step, def.min, def.max);
-    store.saveSettings(mode.id, values);
-    renderer?.setMode(mode, values);
+    onChange();
     show();
   };
   minus.onclick = () => change(-1);
@@ -76,13 +78,7 @@ function selectMode(next) {
   values = store.loadSettings(mode);
   store.saveModeId(mode.id);
   renderer?.setMode(mode, values);
-  // Lift the scene so its centre sits in the space above the home panel.
-new ResizeObserver(([entry]) => {
-  root.setProperty('--home-lift', `${entry.borderBoxSize[0].blockSize / 2}px`);
-}).observe(els.home);
-
-renderHome();
-els.modes.querySelector('[aria-pressed="true"]')?.scrollIntoView({ inline: 'center', block: 'nearest' });
+  renderHome();
 }
 
 function renderHome() {
@@ -97,7 +93,15 @@ function renderHome() {
     return b;
   }));
   els.blurb.textContent = mode.blurb;
-  els.settings.replaceChildren(...mode.settings.map(stepper));
+  const saveMode = () => {
+    store.saveSettings(mode.id, values);
+    renderer?.setMode(mode, values);
+  };
+  const saveApp = () => store.saveSettings(APP.id, appValues);
+  els.settings.replaceChildren(
+    ...mode.settings.map((def) => stepper(def, values, saveMode)),
+    ...APP.settings.filter((def) => def.shown()).map((def) => stepper(def, appValues, saveApp)),
+  );
   const { sessions, minutes } = store.recentSummary();
   els.summary.textContent = sessions
     ? `Last ${LOG.summaryDays} days: ${sessions} session${sessions === 1 ? '' : 's'}, ${minutes} min`
@@ -137,7 +141,7 @@ function hideHud() {
 }
 
 function begin() {
-  unlockAudio();
+  unlockAudio(appValues);
   keepAwake();
   renderer.resetClock();
   mode.sound?.start(values);
@@ -163,13 +167,7 @@ function finish(seconds) {
   setScene(true);
   document.body.classList.remove('in-session');
   els.home.classList.remove('hidden');
-  // Lift the scene so its centre sits in the space above the home panel.
-new ResizeObserver(([entry]) => {
-  root.setProperty('--home-lift', `${entry.borderBoxSize[0].blockSize / 2}px`);
-}).observe(els.home);
-
-renderHome();
-els.modes.querySelector('[aria-pressed="true"]')?.scrollIntoView({ inline: 'center', block: 'nearest' });
+  renderHome();
 }
 
 els.start.onclick = (e) => {
