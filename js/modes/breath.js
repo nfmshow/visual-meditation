@@ -1,4 +1,4 @@
-import { audioContext, noiseBuffer, outputBus, repeat } from '../audio.js';
+import { audioContext, followCurve, noiseSource, outputBus, repeat } from '../audio.js';
 import { choiceSetting, lengthSetting, singlePhase } from './shared.js';
 
 // Seconds per segment. Resonance (~5.5 breaths a minute) has the best evidence for calming.
@@ -10,7 +10,7 @@ const PATTERNS = [
 ];
 
 // Breath sound: brown noise that swells and brightens with the lungs.
-const SOUND = { gain: [0.03, 0.16], cutoffHz: [250, 1200], rampSteps: 12, noiseS: 4 };
+const SOUND = { gain: [0.03, 0.16], cutoffHz: [250, 1200] };
 
 const ease = (x) => 0.5 - 0.5 * Math.cos(Math.PI * x);
 const cycleLength = (pt) => pt.in + pt.holdIn + pt.out + pt.holdOut;
@@ -26,12 +26,9 @@ function breathAt(pt, t) {
   return 0;
 }
 
-// Eased ramp built from short linear steps (curves cannot share endpoints safely).
+// Eased move of param between the ends of its range: from/to are 0 (empty) or 1 (full).
 function rampEased(param, [lo, hi], from, to, at, seconds) {
-  for (let k = 1; k <= SOUND.rampSteps; k++) {
-    const b = from + (to - from) * ease(k / SOUND.rampSteps);
-    param.linearRampToValueAtTime(lo + (hi - lo) * b, at + (seconds * k) / SOUND.rampSteps);
-  }
+  followCurve(param, (x) => lo + (hi - lo) * (from + (to - from) * ease(x)), at, seconds);
 }
 
 let stopSound = null;
@@ -53,9 +50,7 @@ export default {
       if (!ctx || !sound) return;
       const pt = PATTERNS[pattern];
       const bus = outputBus();
-      const source = ctx.createBufferSource();
-      source.buffer = noiseBuffer(SOUND.noiseS);
-      source.loop = true;
+      const source = noiseSource('brown');
       const filter = ctx.createBiquadFilter();
       filter.type = 'lowpass';
       const env = ctx.createGain();

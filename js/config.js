@@ -16,6 +16,9 @@ export const AUDIO = {
   fadeOutS: 1.5,   // mode sounds fade out over this when a session ends
   lookaheadS: 1,   // scheduled sounds are queued this far past the next repeat
   tickMs: 1000,
+  curveStepsPerS: 2,  // followCurve resolution
+  curveMinSteps: 8,
+  noiseS: 12,         // looped noise length; long enough that close listening does not catch the loop
   // iOS audio session per 'On silent' option (see js/app-settings.js).
   // playback: plays with the silent switch on, pauses other audio. ambient: mixes with it, obeys the switch.
   sessionTypes: ['playback', 'ambient'],
@@ -30,6 +33,7 @@ export const CUES = {
     close: [{ hz: 392, at: 0 }],
     open: [{ hz: 523.25, at: 0 }],
     end: [{ hz: 523.25, at: 0 }, { hz: 392, at: 0.7 }],
+    nudge: [{ hz: 659.25, at: 0 }],
   },
   vibrate: { end: [120, 80, 120] },
 };

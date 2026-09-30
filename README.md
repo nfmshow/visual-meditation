@@ -8,6 +8,8 @@ Visual focus modes for meditation, built for a phone held in portrait.
 - **Breath.** A light that grows and shrinks to a breathing pattern (resonance, calm, box, 4-7-8),
   with an optional sound that follows the same rhythm.
 - **Bowl.** A singing bowl struck at a set interval. Listen to each strike until it is gone.
+- **Fan.** An oscillating fan (air, blade flutter, motor hum) to listen into, detail by detail,
+  with an optional tone every few minutes to switch detail.
 - **Nature.** Rain on a pond at night, or clouds drifting at dusk.
 - **Fractal.** A Julia set that changes shape very slowly.
 - **Colour.** A full-screen colour field that shifts slowly (ganzfeld).

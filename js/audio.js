@@ -33,12 +33,13 @@ export function bell(dest, { hz, at, gain, decay, partials, attack = AUDIO.attac
   }
 }
 
-export function playCue(name) {
+// at: audio-clock time to play (default now). Vibration is always immediate.
+export function playCue(name, at) {
   const pattern = CUES.vibrate[name];
   if (pattern) navigator.vibrate?.(pattern);
   if (!ctx) return;
   if (ctx.state !== 'running') ctx.resume();
-  const t0 = ctx.currentTime;
+  const t0 = at ?? ctx.currentTime;
   for (const note of CUES.notes[name]) {
     bell(ctx.destination, { hz: note.hz, at: t0 + note.at, gain: CUES.gain, decay: CUES.decayS, partials: CUES.partials });
   }
@@ -59,6 +60,13 @@ export function repeat(start, period, schedule) {
   return () => clearInterval(id);
 }
 
+// Moves param along curve(x), x from 0 to 1, over seconds starting at `at`,
+// in short linear steps (value curves cannot safely share endpoints).
+export function followCurve(param, curve, at, seconds) {
+  const steps = Math.max(AUDIO.curveMinSteps, Math.ceil(seconds * AUDIO.curveStepsPerS));
+  for (let k = 1; k <= steps; k++) param.linearRampToValueAtTime(curve(k / steps), at + (seconds * k) / steps);
+}
+
 // A gain node wired to the speakers, with a fade-out-and-disconnect for stopping.
 export function outputBus(gain = 1) {
   const bus = ctx.createGain();
@@ -74,17 +82,47 @@ export function outputBus(gain = 1) {
   };
 }
 
-// Brown noise: soft, low, ocean-like.
-export function noiseBuffer(seconds) {
+// Looping noise source, not yet started.
+export function noiseSource(colour) {
+  const source = ctx.createBufferSource();
+  source.buffer = noiseBuffer(AUDIO.noiseS, colour);
+  source.loop = true;
+  return source;
+}
+
+// brown: soft, low, ocean-like. pink: even and airy, like a fan.
+export function noiseBuffer(seconds, colour = 'brown') {
   const length = Math.round(ctx.sampleRate * seconds);
   const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
   const data = buffer.getChannelData(0);
-  let last = 0;
-  for (let i = 0; i < length; i++) {
-    last = (last + 0.02 * (Math.random() * 2 - 1)) / 1.02;
-    data[i] = last * 3.5;
-  }
+  const next = colour === 'pink' ? pinkNoise() : brownNoise();
+  for (let i = 0; i < length; i++) data[i] = next();
   return buffer;
+}
+
+function brownNoise() {
+  let last = 0;
+  return () => {
+    last = (last + 0.02 * (Math.random() * 2 - 1)) / 1.02;
+    return last * 3.5;
+  };
+}
+
+// Paul Kellet's filter.
+function pinkNoise() {
+  let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+  return () => {
+    const w = Math.random() * 2 - 1;
+    b0 = 0.99886 * b0 + w * 0.0555179;
+    b1 = 0.99332 * b1 + w * 0.0750759;
+    b2 = 0.969 * b2 + w * 0.153852;
+    b3 = 0.8665 * b3 + w * 0.3104856;
+    b4 = 0.55 * b4 + w * 0.5329522;
+    b5 = -0.7616 * b5 - w * 0.016898;
+    const out = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362) * 0.11;
+    b6 = w * 0.115926;
+    return out;
+  };
 }
 
 // Convolution reverb from a decaying noise impulse.
