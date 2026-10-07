@@ -2,7 +2,7 @@ import { MODES } from './modes/index.js';
 import { TIMING, LOG } from './config.js';
 import { createRenderer } from './renderer.js';
 import { runSession } from './session.js';
-import { unlockAudio } from './audio.js';
+import { unlockAudio, holdAudio } from './audio.js';
 import { keepAwake, allowSleep } from './wakelock.js';
 import * as store from './storage.js';
 import { clamp, formatClock } from './util.js';
@@ -26,6 +26,7 @@ let mode = findMode(new URLSearchParams(location.search).get('mode')) ?? findMod
 let values = store.loadSettings(mode);
 const appValues = store.loadSettings(APP);
 let session = null;
+let releaseAudio = () => {};
 let fadeTimer = 0;
 let hudTimer = 0;
 let hudTick = 0;
@@ -61,8 +62,11 @@ function stepper(def, values, onChange) {
     minus.disabled = values[def.key] <= def.min;
     plus.disabled = values[def.key] >= def.max;
   };
+  // Steps land on the min + k * step grid, so a value saved under an older step rejoins it.
   const change = (dir) => {
-    values[def.key] = clamp(values[def.key] + dir * def.step, def.min, def.max);
+    const k = (values[def.key] - def.min) / def.step;
+    const next = dir > 0 ? Math.floor(k) + 1 : Math.ceil(k) - 1;
+    values[def.key] = clamp(def.min + next * def.step, def.min, def.max);
     onChange();
     show();
   };
@@ -142,6 +146,7 @@ function hideHud() {
 
 function begin() {
   unlockAudio(appValues);
+  releaseAudio = holdAudio();
   keepAwake();
   renderer.resetClock();
   mode.sound?.start(values);
@@ -160,6 +165,7 @@ function begin() {
 function finish(seconds) {
   session = null;
   mode.sound?.stop();
+  releaseAudio();
   hideHud();
   allowSleep();
   if (document.fullscreenElement) document.exitFullscreen?.().catch?.(() => {});

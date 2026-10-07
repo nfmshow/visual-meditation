@@ -13,6 +13,19 @@ export function unlockAudio({ silent }) {
 
 export const audioContext = () => ctx;
 
+// Some browsers let an idle AudioContext lapse, and a cue cannot restart it without a tap.
+// A silent loop keeps it running through a session, which matters for modes with no sound
+// of their own. Returns a stop function.
+export function holdAudio() {
+  if (!ctx) return () => {};
+  const source = ctx.createBufferSource();
+  source.buffer = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+  source.loop = true;
+  source.connect(ctx.destination);
+  source.start();
+  return () => source.stop();
+}
+
 // Struck metal. partials: [frequency ratio, relative gain, decay scale].
 // beatHz splits each partial into a detuned pair, which gives a bowl its slow shimmer.
 export function bell(dest, { hz, at, gain, decay, partials, attack = AUDIO.attackS, beatHz = 0 }) {
@@ -38,11 +51,14 @@ export function playCue(name, at) {
   const pattern = CUES.vibrate[name];
   if (pattern) navigator.vibrate?.(pattern);
   if (!ctx) return;
-  if (ctx.state !== 'running') ctx.resume();
-  const t0 = at ?? ctx.currentTime;
-  for (const note of CUES.notes[name]) {
-    bell(ctx.destination, { hz: note.hz, at: t0 + note.at, gain: CUES.gain, decay: CUES.decayS, partials: CUES.partials });
-  }
+  const play = (t0) => {
+    for (const note of CUES.notes[name]) {
+      bell(ctx.destination, { hz: note.hz, at: t0 + note.at, gain: CUES.gain, decay: CUES.decayS, partials: CUES.partials });
+    }
+  };
+  // A suspended clock is frozen, so wait for it to run before scheduling.
+  if (ctx.state === 'running') play(at ?? ctx.currentTime);
+  else ctx.resume().then(() => play(Math.max(at ?? 0, ctx.currentTime))).catch(() => {});
 }
 
 // Calls schedule(i, when) for each repeat i, always one period ahead of the audio clock.

@@ -1,11 +1,13 @@
 // Trataka: gaze at the flame, then close your eyes and hold the afterimage.
+const STEP_S = 10;
+
 export default {
   id: 'candle',
   name: 'Candle',
-  blurb: 'Rest your gaze on the flame. At the chime, close your eyes and watch the afterimage until it fades.',
+  blurb: 'Rest your gaze on the flame. At the chime, close your eyes and watch the afterimage until it fades. Open them at the next chime.',
   settings: [
-    { key: 'gaze', label: 'Gaze', type: 'duration', min: 30, max: 300, step: 30, default: 60 },
-    { key: 'rest', label: 'Eyes closed', type: 'duration', min: 15, max: 180, step: 15, default: 45 },
+    { key: 'gaze', label: 'Gaze', type: 'duration', min: 10, max: 300, step: STEP_S, default: 60 },
+    { key: 'rest', label: 'Eyes closed', type: 'duration', min: 10, max: 180, step: STEP_S, default: 40 },
     { key: 'rounds', label: 'Rounds', type: 'count', min: 1, max: 10, step: 1, default: 3 },
   ],
   plan: ({ gaze, rest, rounds }) => Array.from({ length: rounds }, (_, i) => [

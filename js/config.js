@@ -25,17 +25,17 @@ export const AUDIO = {
 };
 
 export const CUES = {
-  gain: 0.12,
+  gain: 0.3,  // phone speaker, possibly across the room
   decayS: 3,
   // [frequency ratio, relative gain]: inharmonic partials give a bell tone.
   partials: [[1, 1], [2.76, 0.3], [5.4, 0.1]],
   notes: {
     close: [{ hz: 392, at: 0 }],
-    open: [{ hz: 523.25, at: 0 }],
+    open: [{ hz: 392, at: 0 }, { hz: 523.25, at: 0.6 }, { hz: 523.25, at: 1.8 }], // eyes are closed: harder to miss
     end: [{ hz: 523.25, at: 0 }, { hz: 392, at: 0.7 }],
     nudge: [{ hz: 659.25, at: 0 }],
   },
-  vibrate: { end: [120, 80, 120] },
+  vibrate: { open: [200], end: [120, 80, 120] },
 };
 
 export const STORAGE_KEYS = {
