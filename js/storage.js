@@ -31,10 +31,19 @@ export function saveSettings(modeId, values) {
   write(STORAGE_KEYS.settings, all);
 }
 
-export function logSession(modeId, seconds) {
+export const loadModeState = (modeId) => read(STORAGE_KEYS.state, {})[modeId];
+
+export function saveModeState(modeId, value) {
+  const all = read(STORAGE_KEYS.state, {});
+  all[modeId] = value;
+  write(STORAGE_KEYS.state, all);
+}
+
+// extra: optional fields a mode adds to the entry, such as a task's score.
+export function logSession(modeId, seconds, extra) {
   if (seconds < LOG.minSeconds) return;
   const log = read(STORAGE_KEYS.log, []);
-  log.push({ at: new Date().toISOString(), mode: modeId, seconds });
+  log.push({ at: new Date().toISOString(), mode: modeId, seconds, ...extra });
   write(STORAGE_KEYS.log, log.slice(-LOG.maxEntries));
 }
 

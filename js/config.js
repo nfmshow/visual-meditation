@@ -5,6 +5,7 @@ export const TIMING = {
   canvasFadeMs: 1500, // flame fades out/in between gaze and eyes-closed phases
   hudHideMs: 4000,    // session overlay auto-hides after a tap
   hudTickMs: 250,
+  holdMs: 500,       // in modes that take taps, holding this long opens the session overlay
 };
 
 export const RENDER = {
@@ -42,6 +43,7 @@ export const STORAGE_KEYS = {
   mode: 'vm.mode',
   settings: 'vm.settings',
   log: 'vm.log',
+  state: 'vm.state', // per-mode progress kept between sessions
 };
 
 export const LOG = {

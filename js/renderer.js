@@ -94,6 +94,8 @@ export function createRenderer(canvas) {
     resetClock() {
       t0 = performance.now();
     },
+    // Seconds on the clock u_time reads.
+    time: () => clock(),
     start() {
       if (!raf) raf = requestAnimationFrame(draw);
     },

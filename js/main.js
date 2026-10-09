@@ -13,7 +13,7 @@ const $ = (id) => document.getElementById(id);
 const els = {
   canvas: $('scene'), home: $('home'), modes: $('modes'), blurb: $('blurb'),
   settings: $('settings'), start: $('start'), summary: $('summary'),
-  hud: $('hud'), phase: $('phase'), remaining: $('remaining'), end: $('end'), error: $('error'),
+  result: $('result'), hud: $('hud'), phase: $('phase'), remaining: $('remaining'), end: $('end'), error: $('error'),
 };
 
 const root = document.documentElement.style;
@@ -30,6 +30,8 @@ let releaseAudio = () => {};
 let fadeTimer = 0;
 let hudTimer = 0;
 let hudTick = 0;
+let holdTimer = 0;
+let held = false;
 
 let renderer;
 try {
@@ -79,6 +81,7 @@ function stepper(def, values, onChange) {
 
 function selectMode(next) {
   mode = next;
+  els.result.hidden = true;
   values = store.loadSettings(mode);
   store.saveModeId(mode.id);
   renderer?.setMode(mode, values);
@@ -144,12 +147,15 @@ function hideHud() {
   clearTimeout(hudTimer);
 }
 
+const toggleHud = () => (els.hud.hidden ? showHud() : hideHud());
+
 function begin() {
   unlockAudio(appValues);
   releaseAudio = holdAudio();
   keepAwake();
   renderer.resetClock();
   mode.sound?.start(values);
+  mode.task?.start(values);
   document.documentElement.requestFullscreen?.({ navigationUI: 'hide' })?.catch?.(() => {});
   els.home.classList.add('hidden');
   document.body.classList.add('in-session');
@@ -164,12 +170,15 @@ function begin() {
 
 function finish(seconds) {
   session = null;
+  const outcome = mode.task?.stop(renderer.time());
+  els.result.textContent = outcome?.text ?? '';
+  els.result.hidden = !outcome?.text;
   mode.sound?.stop();
   releaseAudio();
   hideHud();
   allowSleep();
   if (document.fullscreenElement) document.exitFullscreen?.().catch?.(() => {});
-  store.logSession(mode.id, seconds);
+  store.logSession(mode.id, seconds, outcome?.record);
   setScene(true);
   document.body.classList.remove('in-session');
   els.home.classList.remove('hidden');
@@ -181,10 +190,27 @@ els.start.onclick = (e) => {
   begin();
 };
 els.end.onclick = () => session?.stop();
+
+// A tap toggles the session overlay. In a mode with a task, a tap is an answer
+// instead, and holding the screen toggles the overlay.
+document.addEventListener('pointerdown', (e) => {
+  if (!session || !mode.task || e.target === els.end) return;
+  held = false;
+  holdTimer = setTimeout(() => {
+    held = true;
+    toggleHud();
+  }, TIMING.holdMs);
+});
+for (const type of ['pointerup', 'pointercancel']) document.addEventListener(type, () => clearTimeout(holdTimer));
+document.addEventListener('contextmenu', (e) => {
+  if (session) e.preventDefault();
+});
 document.addEventListener('click', (e) => {
   if (!session || e.target === els.end) return;
-  if (els.hud.hidden) showHud();
-  else hideHud();
+  if (!mode.task) toggleHud();
+  else if (held) held = false;
+  else if (!els.hud.hidden) hideHud();
+  else mode.task.tap(renderer.time());
 });
 
 // Lift the scene so its centre sits in the space above the home panel.
