@@ -2,6 +2,7 @@
 const STEP_S = 10;
 
 export const rounds = {
+  blurb: 'Rest your gaze on the flame. At the chime, close your eyes and watch the afterimage until it fades. Open them at the next chime.',
   settings: [
     { key: 'gaze', label: 'Gaze', type: 'duration', min: 10, max: 300, step: STEP_S, default: 60 },
     { key: 'rest', label: 'Eyes closed', type: 'duration', min: 10, max: 180, step: STEP_S, default: 40 },

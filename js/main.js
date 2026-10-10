@@ -33,11 +33,15 @@ let hudTick = 0;
 let holdTimer = 0;
 let held = false;
 
+// Seconds of a session with the scene showing.
+const watchSeconds = () => mode.plan(values).filter((p) => p.visible).reduce((sum, p) => sum + p.seconds, 0);
+
 let renderer;
 try {
   renderer = createRenderer(els.canvas);
   renderer.setMode(mode, values);
   renderer.start();
+  mode.video?.show(watchSeconds());
 } catch (err) {
   els.error.textContent = err.message;
   els.error.hidden = false;
@@ -79,12 +83,47 @@ function stepper(def, values, onChange) {
   return row;
 }
 
+// Choosing a mode's video. Begin waits until there is one.
+function videoPicker(source) {
+  const row = el('div', 'picker');
+  const out = el('output');
+  const button = el('button');
+  const input = el('input');
+  const note = el('p', 'note');
+  input.type = 'file';
+  input.accept = 'video/*';
+  input.hidden = true;
+  input.onchange = async () => {
+    const file = input.files[0];
+    input.value = '';
+    if (!file) return;
+    await source.choose(file);
+    if (mode.video === source) source.show(watchSeconds());
+  };
+  button.onclick = () => input.click();
+  const show = () => {
+    out.textContent = source.status() ?? 'None chosen';
+    button.textContent = source.ready ? 'Change' : 'Choose';
+    button.disabled = source.busy;
+    note.textContent = source.note();
+    if (mode.video === source) els.start.disabled = !renderer || !source.ready || source.busy;
+  };
+  source.onchange = show;
+  show();
+  row.append(el('span', null, 'Video'), out, button, input);
+  return [row, note];
+}
+
 function selectMode(next) {
+  mode.video?.hide();
   mode = next;
   els.result.hidden = true;
   values = store.loadSettings(mode);
   store.saveModeId(mode.id);
-  renderer?.setMode(mode, values);
+  if (renderer) {
+    renderer.setMode(mode, values);
+    mode.video?.show(watchSeconds());
+  }
   renderHome();
 }
 
@@ -105,7 +144,9 @@ function renderHome() {
     renderer?.setMode(mode, values);
   };
   const saveApp = () => store.saveSettings(APP.id, appValues);
+  els.start.disabled = !renderer;
   els.settings.replaceChildren(
+    ...(mode.video ? videoPicker(mode.video) : []),
     ...mode.settings.map((def) => stepper(def, values, saveMode)),
     ...APP.settings.filter((def) => def.shown()).map((def) => stepper(def, appValues, saveApp)),
   );
@@ -119,10 +160,15 @@ function setScene(visible) {
   clearTimeout(fadeTimer);
   if (visible) {
     renderer.start();
+    mode.video?.play();
     els.canvas.classList.remove('dark');
   } else {
     els.canvas.classList.add('dark');
-    fadeTimer = setTimeout(() => renderer.stop(), TIMING.canvasFadeMs); // save battery while eyes are closed
+    // Save battery while eyes are closed.
+    fadeTimer = setTimeout(() => {
+      renderer.stop();
+      mode.video?.pause();
+    }, TIMING.canvasFadeMs);
   }
 }
 
@@ -153,6 +199,7 @@ function begin() {
   unlockAudio(appValues);
   releaseAudio = holdAudio();
   keepAwake();
+  mode.video?.begin(watchSeconds());
   renderer.resetClock();
   mode.sound?.start(values);
   mode.task?.start(values);
@@ -179,6 +226,7 @@ function finish(seconds) {
   allowSleep();
   if (document.fullscreenElement) document.exitFullscreen?.().catch?.(() => {});
   store.logSession(mode.id, seconds, outcome?.record);
+  mode.video?.cue(watchSeconds()); // the next session gets a new stretch
   setScene(true);
   document.body.classList.remove('in-session');
   els.home.classList.remove('hidden');

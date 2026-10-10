@@ -8,6 +8,8 @@ Visual focus modes for meditation, built for a phone held in portrait.
 - **Candle V2.** The same candle, with small changes to the flame at random times (it leans,
   or its height, brightness or blue changes). Tap when you notice one. Changes get subtler as you catch
   them, and the size you can catch is kept between sessions. Hold the screen for the timer.
+- **Candle V3.** Trataka with a filmed candle: a video you choose from your phone once. It is kept
+  in browser storage (never uploaded or downloaded), and each session plays a random stretch of it.
 - **Breath.** A light that grows and shrinks to a breathing pattern (resonance, calm, box, 4-7-8),
   with an optional sound that follows the same rhythm.
 - **Bowl.** A singing bowl struck at a set interval. Listen to each strike until it is gone.
@@ -41,5 +43,7 @@ Create `js/modes/<name>.js` and add it to `js/modes/index.js`. A mode exports:
 - `task` (optional): `{ start(values), tap(t), stop(t) }` for a mode that takes taps; `stop` returns
   `{ text, record }`, shown after the session and added to its log entry
 - `sound` (optional): `{ start(values), stop() }`, built from `js/audio.js`
+- `video` (optional): a source from `createVideoSource(id)` in `js/video.js`. The home screen gets a
+  picker and Begin waits for a video. Pass `video.element` from `uniforms` and it arrives as a `sampler2D`
 
 Shared constants are in `js/config.js`.

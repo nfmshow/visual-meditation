@@ -39,11 +39,18 @@ export const CUES = {
   vibrate: { open: [200], end: [120, 80, 120] },
 };
 
+export const VIDEO = {
+  fadeS: 2,        // fades in from black after a seek, and out before the video's end
+  probeMs: 15000,  // a picked video that has not shown a frame by then is refused
+  picks: 5,        // tries for a start that does not overlap the last session's stretch
+};
+
 export const STORAGE_KEYS = {
   mode: 'vm.mode',
   settings: 'vm.settings',
   log: 'vm.log',
   state: 'vm.state', // per-mode progress kept between sessions
+  files: 'vm.files', // IndexedDB database for picked files
 };
 
 export const LOG = {

@@ -47,14 +47,44 @@ export function createRenderer(canvas) {
     gl.attachShader(program, compile(gl.FRAGMENT_SHADER, HEADER + mode.fragment));
     gl.linkProgram(program);
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
-    return { mode, program, aPos: gl.getAttribLocation(program, 'a_pos'), locations: new Map() };
+    return { mode, program, aPos: gl.getAttribLocation(program, 'a_pos'), locations: new Map(), units: new Map() };
+  }
+
+  // One texture per video element, uploaded when the video has moved on.
+  const videos = new Map();
+  function videoTexture(video) {
+    if (!videos.has(video)) {
+      const texture = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
+      // Video sizes are rarely powers of two, which WebGL 1 only samples without mipmaps or repeat.
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      videos.set(video, { texture, time: -1, src: '' });
+    }
+    const entry = videos.get(video);
+    gl.bindTexture(gl.TEXTURE_2D, entry.texture);
+    const moved = !video.paused || video.currentTime !== entry.time || video.currentSrc !== entry.src;
+    if (moved && video.readyState >= video.HAVE_CURRENT_DATA) {
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
+      entry.time = video.currentTime;
+      entry.src = video.currentSrc;
+    }
   }
 
   function setUniform(name, v) {
     if (!current.locations.has(name)) current.locations.set(name, gl.getUniformLocation(current.program, name));
     const loc = current.locations.get(name);
     if (loc === null) return;
-    if (typeof v === 'number') gl.uniform1f(loc, v);
+    if (v instanceof HTMLVideoElement) {
+      if (!current.units.has(name)) current.units.set(name, current.units.size);
+      const unit = current.units.get(name);
+      gl.activeTexture(gl.TEXTURE0 + unit);
+      videoTexture(v);
+      gl.uniform1i(loc, unit);
+    } else if (typeof v === 'number') gl.uniform1f(loc, v);
     else gl[`uniform${v.length}fv`](loc, v);
   }
 
