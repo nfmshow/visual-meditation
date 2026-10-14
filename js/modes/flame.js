@@ -5,7 +5,7 @@ export const rounds = {
   blurb: 'Rest your gaze on the flame. At the chime, close your eyes and watch the afterimage until it fades. Open them at the next chime.',
   settings: [
     { key: 'gaze', label: 'Gaze', type: 'duration', min: 10, max: 300, step: STEP_S, default: 60 },
-    { key: 'rest', label: 'Eyes closed', type: 'duration', min: 10, max: 180, step: STEP_S, default: 40 },
+    { key: 'rest', label: 'Eyes closed', type: 'duration', min: 10, max: 600, step: STEP_S, default: 40 },
     { key: 'rounds', label: 'Rounds', type: 'count', min: 1, max: 10, step: 1, default: 3 },
   ],
   plan: ({ gaze, rest, rounds }) => Array.from({ length: rounds }, (_, i) => [
