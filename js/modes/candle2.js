@@ -1,5 +1,7 @@
 import { rounds, CANDLE_SCENE } from './flame.js';
+import { LEVEL, tapFeedback } from './shared.js';
 import { loadModeState, saveModeState } from '../storage.js';
+import { between, count, smoothstep } from '../util.js';
 
 const ID = 'candle2';
 
@@ -24,20 +26,9 @@ const CHANGE = {
 const SHOWN_S = CHANGE.riseS + CHANGE.holdS + CHANGE.fallS;
 const WINDOW_S = SHOWN_S + CHANGE.graceS;
 
-// Change size: shrinks when one is caught, grows three times as much when one is missed,
-// so it settles where about 3 in 4 are caught. Kept between sessions.
-const LEVEL = { start: 1, min: 0.03, max: 1, caught: 0.9, missed: 0.9 ** -3 };
-
-const TAP_VIBRATE_MS = 12; // confirms the tap landed, not whether it caught anything
-
-const between = ([lo, hi]) => lo + Math.random() * (hi - lo);
-const smoothstep = (a, b, x) => {
-  const k = Math.min(1, Math.max(0, (x - a) / (b - a)));
-  return k * k * (3 - 2 * k);
-};
 const envelope = (x) => smoothstep(0, CHANGE.riseS, x) * (1 - smoothstep(SHOWN_S - CHANGE.fallS, SHOWN_S, x));
 
-let level = LEVEL.start;
+let level = LEVEL.start; // change size, kept between sessions
 let changes = [];
 let extraTaps = 0;
 
@@ -63,7 +54,7 @@ function advance(t) {
     if (c.size === null && t >= c.at) c.size = level;
     if (!c.done && t >= c.at + WINDOW_S) {
       c.done = true;
-      level = Math.min(LEVEL.max, level * LEVEL.missed);
+      level = LEVEL.missed(level);
     }
   }
 }
@@ -82,7 +73,7 @@ function summary() {
   const noticeS = caught.length ? caught.reduce((sum, c) => sum + c.caughtAt - c.at, 0) / caught.length : null;
   const record = { changes: scored.length, caught: caught.length, extraTaps, noticeS, level };
   if (!scored.length) return { record };
-  const extra = extraTaps ? `, ${extraTaps} extra tap${extraTaps === 1 ? '' : 's'}` : '';
+  const extra = extraTaps ? `, ${count(extraTaps, 'extra tap')}` : '';
   const notice = noticeS === null ? '' : `, ${noticeS.toFixed(1)} s to notice`;
   return { record, text: `Caught ${caught.length} of ${scored.length}${extra}${notice}. Next changes: ${Math.round(level * 100)}% size.` };
 }
@@ -100,7 +91,7 @@ export default {
       extraTaps = 0;
     },
     tap(t) {
-      navigator.vibrate?.(TAP_VIBRATE_MS);
+      tapFeedback();
       advance(t);
       const c = changes.find((ch) => ch.size !== null && !ch.done);
       if (!c) {
@@ -109,7 +100,7 @@ export default {
       }
       c.caughtAt = t;
       c.done = true;
-      level = Math.max(LEVEL.min, level * LEVEL.caught);
+      level = LEVEL.caught(level);
     },
     // Changes still showing when a session ends early are left out.
     stop(t) {

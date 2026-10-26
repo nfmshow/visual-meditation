@@ -76,6 +76,20 @@ export function repeat(start, period, schedule) {
   return () => clearInterval(id);
 }
 
+// Calls play(event, when) for each of a list of { at } sorted by at, seconds after start
+// on the audio clock, a little ahead of the clock. Returns a function that stops scheduling.
+export function playList(start, events, play) {
+  let i = 0;
+  const tick = () => {
+    for (; i < events.length && start + events[i].at < ctx.currentTime + AUDIO.lookaheadS + AUDIO.tickMs / 1000; i++) {
+      play(events[i], start + events[i].at);
+    }
+  };
+  tick();
+  const id = setInterval(tick, AUDIO.tickMs);
+  return () => clearInterval(id);
+}
+
 // Moves param along curve(x), x from 0 to 1, over seconds starting at `at`,
 // in short linear steps (value curves cannot safely share endpoints).
 export function followCurve(param, curve, at, seconds) {

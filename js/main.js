@@ -5,7 +5,7 @@ import { runSession } from './session.js';
 import { unlockAudio, holdAudio } from './audio.js';
 import { keepAwake, allowSleep } from './wakelock.js';
 import * as store from './storage.js';
-import { clamp, formatClock } from './util.js';
+import { clamp, count, formatClock } from './util.js';
 import { formatSetting } from './modes/shared.js';
 import { APP } from './app-settings.js';
 
@@ -152,7 +152,7 @@ function renderHome() {
   );
   const { sessions, minutes } = store.recentSummary();
   els.summary.textContent = sessions
-    ? `Last ${LOG.summaryDays} days: ${sessions} session${sessions === 1 ? '' : 's'}, ${minutes} min`
+    ? `Last ${LOG.summaryDays} days: ${count(sessions, 'session')}, ${minutes} min`
     : '';
 }
 
@@ -241,8 +241,10 @@ els.end.onclick = () => session?.stop();
 
 // A tap toggles the session overlay. In a mode with a task, a tap is an answer
 // instead, and holding the screen toggles the overlay.
+const takesTaps = () => mode.task && (mode.task.on?.(values) ?? true);
+
 document.addEventListener('pointerdown', (e) => {
-  if (!session || !mode.task || e.target === els.end) return;
+  if (!session || !takesTaps() || e.target === els.end) return;
   held = false;
   holdTimer = setTimeout(() => {
     held = true;
@@ -255,7 +257,7 @@ document.addEventListener('contextmenu', (e) => {
 });
 document.addEventListener('click', (e) => {
   if (!session || e.target === els.end) return;
-  if (!mode.task) toggleHud();
+  if (!takesTaps()) toggleHud();
   else if (held) held = false;
   else if (!els.hud.hidden) hideHud();
   else mode.task.tap(renderer.time());
